@@ -1,0 +1,15 @@
+plugins { id 'com.android.application' }
+def signingKeystore = rootProject.file('../.secrets/debug.keystore')
+if (!signingKeystore.isFile()) throw new GradleException('Existing APK signing keystore is missing')
+android {
+    namespace 'com.personal.toolbox'
+    compileSdk 36
+    defaultConfig {
+        applicationId 'com.personal.toolbox'
+        minSdk 29
+        targetSdk 36
+        versionCode 6
+        versionName '0.1.0003'
+    }
+    signingConfigs { debug { storeFile signingKeystore } }
+}
