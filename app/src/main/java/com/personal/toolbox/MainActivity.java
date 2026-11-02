@@ -3,6 +3,8 @@ package com.personal.toolbox;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.Editable;
@@ -53,6 +55,7 @@ public class MainActivity extends Activity {
         if (tab == 2) {
             body.addView(button("Import", () -> { Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT); i.addCategory(Intent.CATEGORY_OPENABLE); i.setType("*/*"); startActivityForResult(i, PICK); }));
             body.addView(button("Manage", this::manage));
+            body.addView(button("About", this::about));
         } else {
             body.addView(search, new LinearLayout.LayoutParams(-1, -2)); body.addView(list, new LinearLayout.LayoutParams(-1, -2));
         }
@@ -67,6 +70,16 @@ public class MainActivity extends Activity {
         };
         search.addTextChangedListener(new TextWatcher() { public void beforeTextChanged(CharSequence s,int a,int c,int f) {} public void onTextChanged(CharSequence s,int a,int b,int c) { refresh.run(); } public void afterTextChanged(Editable e) {} }); refresh.run();
     }
+    private void about() {
+        String url = "https://github.com/hiSean0909/Android-Magic-Box";
+        new AlertDialog.Builder(this).setTitle("About").setMessage(url)
+            .setNegativeButton("Close", null)
+            .setPositiveButton("Copy", (dialog, which) -> {
+                ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                clipboard.setPrimaryClip(ClipData.newPlainText("GitHub", url));
+                message("GitHub address copied");
+            }).show();
+    }
     private void manage() {
         managing = true;
         LinearLayout root = new LinearLayout(this); root.setOrientation(1); root.setPadding(20, 12, 20, 12); root.addView(button("Back", this::home));
@@ -74,7 +87,7 @@ public class MainActivity extends Activity {
         File[] dirs = modules.listFiles(); if (dirs != null) for (File d : dirs) try { JSONObject m = metadata(d); String id = m.getString("id");
             TextView title = new TextView(this); title.setText(m.getString("name") + " " + m.getString("version") + (enabled(id) ? " (enabled)" : " (disabled)")); list.addView(title);
             list.addView(button(enabled(id) ? "Disable" : "Enable", () -> { getPreferences(MODE_PRIVATE).edit().putBoolean(id, !enabled(id)).apply(); manage(); }));
-            list.addView(button("Remove", () -> new AlertDialog.Builder(this).setMessage("Remove " + m.optString("name") + "?").setNegativeButton("Cancel", null).setPositiveButton("Remove", (a,b) -> { delete(d); manage(); }).show()));
+            list.addView(button("Uninstall", () -> new AlertDialog.Builder(this).setMessage("Uninstall " + m.optString("name") + "?").setNegativeButton("Cancel", null).setPositiveButton("Uninstall", (a,b) -> { delete(d); manage(); }).show()));
         } catch (Exception ignored) { }
     }
     private static void delete(File f) { if (f.isDirectory()) { File[] files = f.listFiles(); if (files != null) for (File x : files) delete(x); } f.delete(); }
@@ -94,7 +107,7 @@ public class MainActivity extends Activity {
             if (!id.matches("[a-z0-9][a-z0-9-]{0,63}") || name.trim().isEmpty() || version.trim().isEmpty() || !(category.equals("tool") || category.equals("game")) || api < 1 || api > 2) throw new IOException("Invalid or incompatible metadata");
             File page = new File(stage, entry); if (!page.getCanonicalPath().startsWith(stage.getCanonicalPath() + File.separator) || !page.isFile() || !entry.endsWith(".html")) throw new IOException("Invalid entry point");
             File dest = new File(modules, id), backup = new File(getCacheDir(), "function-backup"); delete(backup); boolean had = dest.exists(); if (had && !dest.renameTo(backup)) throw new IOException("Cannot prepare update");
-            if (!stage.renameTo(dest)) { if (had) backup.renameTo(dest); throw new IOException("Cannot install function"); } delete(backup);
+            if (!stage.renameTo(dest)) { if (had) backup.renameTo(dest); throw new IOException("Cannot install function"); } delete(backup); if (!had) getPreferences(MODE_PRIVATE).edit().putBoolean(id, true).apply();
         } finally { delete(stage); }
     }
     private void open(File dir, JSONObject m) {

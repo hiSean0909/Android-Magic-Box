@@ -1,13 +1,28 @@
 # Magic Box
 
-Magic Box is an offline Android application for installing and managing optional plugins.
+## About
 
-See [spec.md](spec.md) for requirements. The latest development APK is in this directory; releases are in `release`.
+Magic Box is an offline Android app for installing and managing optional plugins. It starts without preinstalled plugins.
 
-Install `release/MagicBox-v0.1-release.apk` on the phone. Use ALL to browse plugins and Search to find them. Open Settings and use Import to select a plugin ZIP; use Manage to enable, disable, or remove plugins. Plugin source and packages are maintained in [Android-Magic-Box-Plugins](https://github.com/hiSean0909/Android-Magic-Box-Plugins).
+## Install
 
-Development APKs use the Gradle release build type and the existing signing keystore at `.secrets/debug.keystore`. Preserve this file to allow in-place updates; the build fails if it is missing.
+Download the latest release APK from the `release` folder and install it on an Android 10 or later device. Install a newer compatible APK over the existing app to keep imported plugins, their enabled states, and saved settings. Uninstalling the app or clearing its data can remove them.
 
-Build a development APK with `gradle assembleRelease`. After user confirmation, the verified APK can be renamed and moved to `release` without rebuilding.
+The current release includes the features described below.
 
-The release is the debug-signed `0.1.0003` development build. Device verification, including the phone's Android version and ruler calibration, is pending.
+## Use Plugins
+
+1. Open **Settings > Import** and select a plugin ZIP file.
+2. Find enabled plugins under **ALL** or by name in **Search**, then tap one to open it.
+3. Open **Settings > Manage** to enable, disable, or uninstall an installed plugin.
+
+Newly installed and reinstalled plugins are enabled by default. Import a plugin with the same ID to update it; its enabled state is preserved.
+
+## Get Plugins
+
+- Download plugins from the [official plugin repository](https://github.com/hiSean0909/Android-Magic-Box-Plugins), then import them manually.
+- Create your own plugins using the [plugin development guide](PLUGIN_DEVELOPMENT.md).
+
+## About the App
+
+Open **Settings > About** to view and copy the Magic Box GitHub address.

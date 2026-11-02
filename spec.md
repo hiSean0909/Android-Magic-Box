@@ -9,12 +9,14 @@ Build an offline Android host application that lets users import and manage inde
 - Name the application Magic Box and support Android 10 (API 29) and later
 - Use English interface text and require no account or network connection
 - Provide ALL, Search, and Settings tabs in that order in the bottom navigation, with Search selected at startup
-- Place Import and Manage actions on the Settings tab
+- Place Import, Manage, and About actions on the Settings tab
+- Show the project GitHub address, https://github.com/hiSean0909/Android-Magic-Box, in About; provide a Copy button that copies the address and confirms the action without requiring network access
 - Show all enabled tools and games on ALL, search function names without regard to English letter case, and open an enabled function from the results
 - Center each tab's main content within the available area, including the search field and settings actions; keep longer content scrollable
 - Let users browse accessible phone storage directories through the Android file picker, select a function ZIP package, and import it into application storage
 - Validate package metadata, entry point, and host interface compatibility before installation; report invalid or incompatible packages without changing installed functions
-- List installed functions and let users update, disable, enable, and remove them; identify updates by the function's unique identifier
+- On the Manage screen, show each installed function's enabled state and an Enable or Disable button, and provide an Uninstall button with a confirmation prompt; identify updates by the function's unique identifier
+- Enable newly installed and reinstalled functions by default; preserve the enabled state when updating an installed function
 - Make a successfully imported or enabled function available without reinstalling or restarting the host
 - Close a running function before applying its update, disabling it, or removing it
 - Allow users to return from a function to the host
@@ -39,9 +41,11 @@ Build an offline Android host application that lets users import and manage inde
 - Set the initial APK version name to `0.1.0001` and version code to 4; increase the version code for subsequent deliveries
 - Keep the application ID and signing certificate consistent across APK deliveries so a newer version can update the installed application in place
 - Verify that the host installs and opens without network access and that no functions are installed initially
-- Verify the three navigation tabs, centered content, ALL function list, and the Import and Manage actions on Settings
+- Verify the three navigation tabs, centered content, ALL function list, and the Import, Manage, and About actions on Settings
+- Verify that About displays the project GitHub address and Copy places the address on the clipboard with confirmation while offline
 - On the target phone, verify that the system file picker can browse accessible internal storage directories and import a selected function ZIP
-- Verify offline import, search, opening, disabling, enabling, updating, and removal of representative functions without reinstalling the host
+- Verify offline import, search, opening, disabling, enabling, updating, and uninstalling representative functions without reinstalling the host
+- Verify that new installations and reinstallations are enabled by default, updates preserve the enabled state, and each installed function shows its state and management buttons
 - Verify that invalid or incompatible packages are rejected and an installed function remains usable after a failed update
 - Verify the screen measurement and persistent settings interfaces used by functions
 - Verify that a function can enter and exit fullscreen and that system bars are restored when the function closes
