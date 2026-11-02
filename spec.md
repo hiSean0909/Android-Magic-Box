@@ -34,8 +34,8 @@ Build an offline Android host application that lets users import and manage inde
 
 ## Delivery and Acceptance
 
-- Provide the latest development APK in the project root, named `MagicBox-v0.1.XXXX-dev.apk`; increment `XXXX` for each development version
-- Publish `MagicBox-v0.1-release.apk` only after user confirmation, placing the latest release in `release` and earlier releases in `release/archive`
+- Provide the latest development APK in the project root, named `MagicBox-v<major>.<minor>.<sequence>-dev.apk`; use a four-digit sequence starting at `0001` and increment it for each development version
+- Publish `MagicBox-v<major>.<minor>-release.apk` only after user confirmation, placing the latest release in `release` and earlier releases in `release/archive`
 - Set the initial APK version name to `0.1.0001` and version code to 4; increase the version code for subsequent deliveries
 - Keep the application ID and signing certificate consistent across APK deliveries so a newer version can update the installed application in place
 - Verify that the host installs and opens without network access and that no functions are installed initially

@@ -3,9 +3,9 @@
 AGENTS.md
 *.keystore
 *.jks
-/code/.gradle/
-/code/.gradle-user/
-/code/.android-user/
-/code/app/build/
-/code/build/
-/code/local.properties
+/.gradle/
+/.gradle-user/
+/.android-user/
+/app/build/
+/build/
+/local.properties
