@@ -20,7 +20,11 @@ Use a manifest such as:
   "category": "tool",
   "version": "1.0.0",
   "entry": "index.html",
-  "hostApi": 1
+  "hostApi": 1,
+  "icon": "icon.png",
+  "description": "A short description of the plugin.",
+  "developer": "Example Developer",
+  "official": false
 }
 ```
 
@@ -32,6 +36,12 @@ Use a manifest such as:
 | `version` | Nonempty version string |
 | `entry` | Path to an existing `.html` file inside the package |
 | `hostApi` | Integer `1` or `2`; use `2` for fullscreen |
+| `icon` | Optional path to an image inside the package for the plugin card |
+| `description` | Optional short plugin description displayed on the card |
+| `developer` | Optional developer name displayed on the card |
+| `official` | Optional boolean; `true` displays the official badge |
+
+The host uses a default icon and placeholder text when optional card metadata is absent. The official badge is based solely on the package declaration and is not independently verified.
 
 The host identifies updates by `id`, so keep it stable across versions and use a new ID for a separate plugin. The host accepts up to 200 ZIP entries and 10,000,000 bytes of total uncompressed file content. The manifest is limited to 2,000,000 bytes. Package paths must stay inside the ZIP's root directory.
 
@@ -52,9 +62,11 @@ A minimal `index.html`:
 </html>
 ```
 
-ZIP the contents of the plugin directory, not the directory itself, so that `manifest.json` is at the ZIP root. Copy the ZIP to the phone, open Magic Box, and select **Settings > Import** to choose it. Use **ALL** or **Search** to open the plugin and **Settings > Manage** to enable, disable, or uninstall it. Import a package with the same ID to update an installed plugin.
+ZIP the contents of the plugin directory, not the directory itself, so that `manifest.json` is at the ZIP root. Copy the ZIP to the phone, open Magic Box, and select **Plugins > Import > Import plugin from local** to choose it. Use **Plugins** or **Search** to open the plugin. Use the settings button on its card to enable, disable, or uninstall it. Import a package with the same ID to update an installed plugin.
 
 ## Runtime and Host Interface
+
+The host reserves the top and bottom 10% of screen height as background-only areas, including in fullscreen. Design plugin pages so that text, controls, icons, and other content remain in the middle 80%.
 
 Bundle all resources locally and use relative paths. The host serves the plugin under an origin derived from its ID, `https://<id>.magicbox.local/`; this is a local WebView origin, not a network website. External navigation and resource requests are blocked. The host currently assigns HTML, JavaScript, and CSS MIME types based on `.html`, `.js`, and `.css` extensions; other extensions use `application/octet-stream`.
 
@@ -71,7 +83,7 @@ WebView DOM storage is enabled. A plugin can use `localStorage` for persistent s
 ## Verify a Package
 
 1. Import the ZIP on the target phone and confirm the plugin appears and opens offline.
-2. Exercise the plugin's functions and any host interfaces it uses, including fullscreen and Back behavior where applicable.
+2. Exercise the plugin's functions and any host interfaces it uses, including fullscreen and Back behavior where applicable. Verify that the top and bottom 10% of the screen contain only background.
 3. Check that settings survive closing and reopening the plugin, if it stores settings.
 4. Import an updated ZIP with the same ID and check that its state and settings remain available.
-5. Check enable, disable, and uninstall behavior in Manage. Test physical measurement and calibration separately if applicable.
+5. Check the card display and its enable, disable, and uninstall actions. Test physical measurement and calibration separately if applicable.

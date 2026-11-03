@@ -8,8 +8,8 @@ android {
         applicationId 'com.personal.toolbox'
         minSdk 29
         targetSdk 36
-        versionCode 9
-        versionName '0.2.0002'
+        versionCode 13
+        versionName '0.3.0004'
     }
     signingConfigs { debug { storeFile signingKeystore } }
     buildTypes { release { signingConfig signingConfigs.debug } }

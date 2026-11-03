@@ -12,9 +12,9 @@ The current release includes the features described below.
 
 ## Use Plugins
 
-1. Open **Settings > Import** and select a plugin ZIP file.
-2. Find enabled plugins under **ALL** or by name in **Search**, then tap one to open it.
-3. Open **Settings > Manage** to enable, disable, or uninstall an installed plugin.
+1. Open **Plugins > Import > Import plugin from local** and select a plugin ZIP file.
+2. Find plugins under **Plugins** or by name in **Search**, then tap an enabled plugin to open it.
+3. Use the settings button on a plugin card to enable, disable, or uninstall it.
 
 Newly installed and reinstalled plugins are enabled by default. Import a plugin with the same ID to update it; its enabled state is preserved.
 
