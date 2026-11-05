@@ -8,9 +8,73 @@ android {
         applicationId 'com.personal.toolbox'
         minSdk 29
         targetSdk 36
-        versionCode 13
-        versionName '0.3.0004'
+        versionCode 26
+        versionName '0.4.0013'
     }
+    sourceSets { main { assets.srcDir layout.buildDirectory.dir('generated/bundledPluginAssets'); res.srcDir layout.buildDirectory.dir('generated/launcherIconRes') } }
     signingConfigs { debug { storeFile signingKeystore } }
     buildTypes { release { signingConfig signingConfigs.debug } }
 }
+
+// Build bundled packages from the plugin source directories.
+def bundledSource = rootProject.file('plugins/built-in plugins')
+def bundledOutput = layout.buildDirectory.dir('generated/bundledPluginAssets/bundled-plugins')
+def bundlePlugins = tasks.register('bundlePlugins') {
+    inputs.dir(bundledSource)
+    outputs.dir(bundledOutput)
+    doLast {
+        def output = bundledOutput.get().asFile
+        delete(output)
+        output.mkdirs()
+        def ids = [] as Set
+        bundledSource.listFiles().findAll { it.isDirectory() && it.name != '_Deprecated' }.sort { it.name }.each { dir ->
+            def manifestFile = new File(dir, 'manifest.json')
+            if (!manifestFile.isFile()) throw new GradleException("Missing plugin manifest: ${dir.name}")
+            def m
+            try { m = new groovy.json.JsonSlurper().parse(manifestFile) }
+            catch (Exception e) { throw new GradleException("Invalid plugin manifest: ${dir.name}", e) }
+            if (!(m instanceof Map) || !(m.id instanceof String) || !(m.id ==~ /[a-z0-9][a-z0-9-]{0,63}/) ||
+                !(m.name instanceof String) || !m.name.trim() || !(m.version instanceof String) || !m.version.trim() ||
+                !(m.description instanceof String) || !m.description.trim() || m.official != true || m.developer != "Official" ||
+                !(m.category in ['game', 'tool']) || !(m.hostApi instanceof Number) || !(m.hostApi in [1, 2]) ||
+                !(m.entry instanceof String) || !m.entry.endsWith('.html'))
+                throw new GradleException("Invalid plugin metadata: ${dir.name}")
+            def entry = new File(dir, m.entry).canonicalFile
+            if (!entry.path.startsWith(dir.canonicalPath + File.separator) || !entry.isFile())
+                throw new GradleException("Invalid plugin entry: ${dir.name}")
+            if (!(m.icon instanceof String) || !m.icon.endsWith('.png'))
+                throw new GradleException("Missing PNG plugin icon: ${dir.name}")
+            def icon = new File(dir, m.icon).canonicalFile
+            if (!icon.path.startsWith(dir.canonicalPath + File.separator) || !icon.isFile() || m.icon.split('/').contains('_Deprecated'))
+                throw new GradleException("Invalid plugin icon path: ${dir.name}")
+            try {
+                def stream = javax.imageio.ImageIO.createImageInputStream(icon)
+                try {
+                    def readers = javax.imageio.ImageIO.getImageReaders(stream)
+                    if (!readers.hasNext()) throw new GradleException("Unreadable plugin icon: ${dir.name}")
+                    def reader = readers.next()
+                    try {
+                        if (!reader.formatName.equalsIgnoreCase('png')) throw new GradleException("Plugin icon is not PNG: ${dir.name}")
+                        reader.input = stream
+                        if (reader.read(0) == null) throw new GradleException("Unreadable plugin icon: ${dir.name}")
+                    } finally { reader.dispose() }
+                } finally { if (stream != null) stream.close() }
+            } catch (Exception e) { throw new GradleException("Invalid PNG plugin icon: ${dir.name}", e) }
+            if (!ids.add(m.id)) throw new GradleException("Duplicate plugin ID: ${m.id}")
+            def target = new File(output, "${m.id}.zip")
+            ant.zip(destfile: target) {
+                fileset(dir: dir) {
+                    exclude(name: '**/*.zip')
+                    exclude(name: 'README.md')
+                    exclude(name: '**/_Deprecated/**')
+                }
+            }
+        }
+    }
+}
+def generateLauncherIcon = tasks.register('generateLauncherIcon', Copy) {
+    from(rootProject.file('assets/magic-box-icon.jpg'))
+    into(layout.buildDirectory.dir('generated/launcherIconRes/drawable-nodpi'))
+    rename { 'magic_box_icon.jpg' }
+}
+tasks.named('preBuild') { dependsOn bundlePlugins, generateLauncherIcon }

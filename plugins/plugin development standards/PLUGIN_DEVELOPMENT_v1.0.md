@@ -1,4 +1,6 @@
-# Plugin Development Guide
+# Plugin Development Guide v1.0
+
+This document defines plugin standard version 1.0.
 
 Magic Box runs plugins as local web pages. Each plugin is distributed as a ZIP file containing its metadata, HTML entry point, scripts, styles, and other resources needed offline. Import packages only from trusted sources.
 
@@ -19,6 +21,7 @@ Use a manifest such as:
   "name": "Hello Magic Box",
   "category": "tool",
   "version": "1.0.0",
+  "pluginStandardVersion": "1.0",
   "entry": "index.html",
   "hostApi": 1,
   "icon": "icon.png",
@@ -33,13 +36,18 @@ Use a manifest such as:
 | `id` | Unique identifier, 1–64 characters, starting with a lowercase ASCII letter or digit and containing only lowercase ASCII letters, digits, and hyphens |
 | `name` | Nonempty display name |
 | `category` | `tool` or `game` |
-| `version` | Nonempty version string |
+| `version` | Nonempty plugin version string |
+| `pluginStandardVersion` | Plugin standard version followed by the plugin, such as `1.0` |
 | `entry` | Path to an existing `.html` file inside the package |
 | `hostApi` | Integer `1` or `2`; use `2` for fullscreen |
 | `icon` | Optional path to an image inside the package for the plugin card |
 | `description` | Optional short plugin description displayed on the card |
 | `developer` | Optional developer name displayed on the card |
 | `official` | Optional boolean; `true` displays the official badge |
+
+The plugin standard version identifies the development rules followed by the plugin; it is separate from the plugin version and the required `hostApi` version. Declare it as a major and minor numeric version, such as `1.0`. The host records its supported standard version and compares the two versions numerically before local import. It attempts installation regardless of the comparison, retains the declared version, and continues to check `hostApi` compatibility. Existing plugins without `pluginStandardVersion` are still eligible for installation.
+
+After a successful import, the host shows `import plugin succeed`. If import fails, it prompts the user to update the plugin when its declared standard version is lower, or update the software when it is higher. For matching, missing, unreadable, or invalid versions, it prompts the user to check the plugin again.
 
 The host uses a default icon and placeholder text when optional card metadata is absent. The official badge is based solely on the package declaration and is not independently verified.
 
@@ -87,3 +95,9 @@ WebView DOM storage is enabled. A plugin can use `localStorage` for persistent s
 3. Check that settings survive closing and reopening the plugin, if it stores settings.
 4. Import an updated ZIP with the same ID and check that its state and settings remain available.
 5. Check the card display and its enable, disable, and uninstall actions. Test physical measurement and calibration separately if applicable.
+
+## Standard Version History
+
+- v1.0: Initial versioned plugin development standard
+
+Published standard versions are retained as separate documents. Backward-compatible additions and clarifications increment the minor version; incompatible changes increment the major version. Record changes when publishing a new version.

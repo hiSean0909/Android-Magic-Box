@@ -8,6 +8,7 @@ import android.content.ClipboardManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.Editable;
+import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.view.View;
 import android.view.Gravity;
@@ -19,6 +20,7 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
+import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ImageView;
@@ -29,17 +31,21 @@ import android.widget.Toast;
 import org.json.JSONObject;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.math.BigInteger;
 import java.util.*;
 import java.util.zip.*;
 
 public class MainActivity extends Activity {
-    private static final int PICK = 1;
+    private static final int PICK = 1, EXPORT = 2;
+    private static final String SUPPORTED_PLUGIN_STANDARD = "1.0";
     private File modules;
+    private String exportId;
     private int tab = 1;
     private WebView web;
     private boolean fullscreen;
 
-    @Override public void onCreate(Bundle state) { super.onCreate(state); modules = new File(getFilesDir(), "functions"); modules.mkdirs(); home(); }
+    @Override public void onCreate(Bundle state) { super.onCreate(state); if (state != null) exportId = state.getString("exportId"); modules = new File(getFilesDir(), "functions"); modules.mkdirs(); initializeBundledPlugins(); home(); }
+    @Override protected void onSaveInstanceState(Bundle state) { super.onSaveInstanceState(state); state.putString("exportId", exportId); }
     private Button button(String text, Runnable action) { Button b = new Button(this); b.setAllCaps(false); b.setText(text); b.setOnClickListener(v -> action.run()); return b; }
     private void message(String s) { Toast.makeText(this, s, Toast.LENGTH_LONG).show(); }
     private boolean enabled(String id) { return getPreferences(MODE_PRIVATE).getBoolean(id, true); }
@@ -74,6 +80,12 @@ public class MainActivity extends Activity {
         dialog.setOnShowListener(d -> { dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setAllCaps(false); dialog.getButton(AlertDialog.BUTTON_POSITIVE).setAllCaps(false); });
         dialog.show();
     }
+    private int searchMatch(JSONObject plugin, String query) {
+        if (plugin.optString("name", "").toLowerCase(Locale.ROOT).contains(query)) return 0;
+        Object description = plugin.opt("description");
+        if (description instanceof String && ((String) description).toLowerCase(Locale.ROOT).contains(query)) return 1;
+        return 2;
+    }
     private void home() {
         setFullscreen(false);
         if (web != null) { web.destroy(); web = null; }
@@ -89,10 +101,10 @@ public class MainActivity extends Activity {
         Runnable refresh = () -> { list.removeAllViews(); String query = search.getText().toString().trim().toLowerCase(Locale.ROOT);
             if (tab == 2 || (tab == 1 && query.isEmpty())) return;
             ArrayList<File> dirs = new ArrayList<>(); File[] files = modules.listFiles(); if (files != null) for (File d : files) try { metadata(d).getString("name"); dirs.add(d); } catch (Exception ignored) { }
-            dirs.sort((a, b) -> { try { return String.CASE_INSENSITIVE_ORDER.compare(metadata(a).getString("name"), metadata(b).getString("name")); } catch (Exception e) { return 0; } });
+            dirs.sort((a, b) -> { try { JSONObject left = metadata(a), right = metadata(b); if (tab == 1) { int stateOrder = Boolean.compare(enabled(right.getString("id")), enabled(left.getString("id"))); if (stateOrder != 0) return stateOrder; int matchOrder = Integer.compare(searchMatch(left, query), searchMatch(right, query)); if (matchOrder != 0) return matchOrder; } return String.CASE_INSENSITIVE_ORDER.compare(left.getString("name"), right.getString("name")); } catch (Exception e) { return 0; } });
             int count = 0;
             for (File d : dirs) try { JSONObject m = metadata(d); String id = m.getString("id"), name = m.getString("name"); boolean active = enabled(id);
-                if (tab == 1 && (!active || !name.toLowerCase(Locale.ROOT).contains(query))) continue;
+                if (tab == 1 && searchMatch(m, query) == 2) continue;
                 list.addView(pluginCard(d, m, active)); count++;
             } catch (Exception ignored) { }
             if (count == 0) { TextView empty = new TextView(this); empty.setText(tab == 0 ? "No plugins installed." : "No plugins found."); list.addView(empty); }
@@ -104,21 +116,40 @@ public class MainActivity extends Activity {
         ImageView icon = new ImageView(this); int size = (int)(56 * getResources().getDisplayMetrics().density); icon.setImageResource(android.R.drawable.ic_menu_gallery);
         String path = m.optString("icon", "");
         if (!path.isEmpty()) try { File f = new File(dir, path); if (f.getCanonicalPath().startsWith(dir.getCanonicalPath() + File.separator) && f.isFile()) { android.graphics.Bitmap bitmap = BitmapFactory.decodeFile(f.getPath()); if (bitmap != null) icon.setImageBitmap(bitmap); } } catch (IOException ignored) { }
-        card.addView(icon, new LinearLayout.LayoutParams(size, size));
+        icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        card.addView(icon, new LinearLayout.LayoutParams(size, LinearLayout.LayoutParams.MATCH_PARENT));
         LinearLayout details = new LinearLayout(this); details.setOrientation(LinearLayout.VERTICAL); details.setPadding(16, 0, 0, 0);
         TextView name = new TextView(this); name.setText(m.optString("name") + (active ? "" : " (disabled)")); name.setTextSize(18); details.addView(name);
-        TextView description = new TextView(this); description.setText(m.optString("description", "No description")); details.addView(description);
+        TextView description = new TextView(this); description.setText(m.optString("description", "No description")); description.setSingleLine(true); description.setEllipsize(TextUtils.TruncateAt.END); details.addView(description);
         LinearLayout bottom = new LinearLayout(this); bottom.setGravity(Gravity.CENTER_VERTICAL);
         TextView developer = new TextView(this); developer.setText((m.optBoolean("official", false) ? "✓ " : "") + m.optString("developer", "Unknown developer")); bottom.addView(developer, new LinearLayout.LayoutParams(0, -2, 1));
-        Button settings = button("⚙", () -> pluginSettings(dir, m)); settings.setContentDescription("Plugin settings"); bottom.addView(settings); details.addView(bottom);
+        TextView settings = new TextView(this); settings.setText("⚙"); settings.setTextSize(20); settings.setGravity(Gravity.CENTER); settings.setPadding(16, 0, 16, 0); settings.setContentDescription("Plugin settings"); settings.setOnClickListener(v -> pluginSettings(dir, m));
+        bottom.addView(settings, new LinearLayout.LayoutParams(-2, LinearLayout.LayoutParams.MATCH_PARENT)); details.addView(bottom);
         card.addView(details, new LinearLayout.LayoutParams(0, -2, 1));
+        details.addOnLayoutChangeListener((view, left, top, right, bottomEdge, oldLeft, oldTop, oldRight, oldBottom) -> {
+            int height = bottomEdge - top;
+            if (height > 0 && icon.getLayoutParams().width != height) {
+                LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) icon.getLayoutParams();
+                params.width = height; icon.setLayoutParams(params);
+            }
+        });
         if (active) { card.setOnClickListener(v -> open(dir, m)); details.setOnClickListener(v -> open(dir, m)); icon.setOnClickListener(v -> open(dir, m)); }
         return card;
     }
     private void pluginSettings(File dir, JSONObject m) {
-        String id = m.optString("id"); String[] actions = {enabled(id) ? "Disable" : "Enable", "Uninstall"};
-        new AlertDialog.Builder(this).setTitle(m.optString("name")).setItems(actions, (dialog, which) -> {
-            if (which == 0) { getPreferences(MODE_PRIVATE).edit().putBoolean(id, !enabled(id)).apply(); home(); }
+        String id = m.optString("id"); boolean active = enabled(id);
+        String[] actions = {"Enable", "Disable", "Uninstall", "Export", "About"};
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, android.R.layout.select_dialog_item, actions) {
+            @Override public boolean areAllItemsEnabled() { return false; }
+            @Override public boolean isEnabled(int position) { return position != (active ? 0 : 1); }
+            @Override public View getView(int position, View convertView, android.view.ViewGroup parent) {
+                View view = super.getView(position, convertView, parent); view.setEnabled(isEnabled(position)); return view;
+            }
+        };
+        new AlertDialog.Builder(this).setTitle(m.optString("name")).setAdapter(adapter, (dialog, which) -> {
+            if (which == 0 || which == 1) { getPreferences(MODE_PRIVATE).edit().putBoolean(id, which == 0).apply(); home(); }
+            else if (which == 4) new AlertDialog.Builder(this).setTitle(m.optString("name")).setMessage(m.optString("description", "No description") + "\n\nVersion: " + m.optString("version")).setPositiveButton("Close", null).show();
+            else if (which == 3) { exportId = id; Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT); intent.addCategory(Intent.CATEGORY_OPENABLE); intent.setType("application/zip"); intent.putExtra(Intent.EXTRA_TITLE, id + ".zip"); startActivityForResult(intent, EXPORT); }
             else new AlertDialog.Builder(this).setMessage("Uninstall " + m.optString("name") + "?").setNegativeButton("Cancel", null).setPositiveButton("Uninstall", (a,b) -> { delete(dir); home(); }).show();
         }).show();
     }
@@ -134,18 +165,69 @@ public class MainActivity extends Activity {
         dialog.show();
     }
     private static void delete(File f) { if (f.isDirectory()) { File[] files = f.listFiles(); if (files != null) for (File x : files) delete(x); } f.delete(); }
-    @Override protected void onActivityResult(int request, int result, Intent data) { super.onActivityResult(request, result, data); if (request != PICK || result != RESULT_OK || data == null) return; try { install(data.getData()); message("Function imported"); } catch (Exception e) { message("Import failed: " + e.getMessage()); } home(); }
-    private void install(Uri uri) throws Exception {
+    private void initializeBundledPlugins() {
+        String[] packages;
+        try { packages = getAssets().list("bundled-plugins"); } catch (IOException e) { return; }
+        if (packages == null) return;
+        for (String name : packages) {
+            if (!name.endsWith(".zip")) continue;
+            String id = name.substring(0, name.length() - 4);
+            String key = "bundled_initialized_" + id;
+            if (getPreferences(MODE_PRIVATE).getBoolean(key, false)) continue;
+            try {
+                if (!new File(modules, id).exists()) {
+                    try (InputStream input = getAssets().open("bundled-plugins/" + name)) {
+                        install(input, new int[]{0}, id);
+                    }
+                }
+                getPreferences(MODE_PRIVATE).edit().putBoolean(key, true).commit();
+            } catch (Exception ignored) { }
+        }
+    }
+    private int comparePluginStandard(Object value) {
+        if (!(value instanceof String) || !((String) value).matches("[0-9]+\\.[0-9]+")) return 0;
+        String[] plugin = ((String) value).split("\\."), supported = SUPPORTED_PLUGIN_STANDARD.split("\\.");
+        int major = new BigInteger(plugin[0]).compareTo(new BigInteger(supported[0]));
+        return major != 0 ? major : new BigInteger(plugin[1]).compareTo(new BigInteger(supported[1]));
+    }
+    @Override protected void onActivityResult(int request, int result, Intent data) {
+        super.onActivityResult(request, result, data);
+        if (request == EXPORT) {
+            String id = exportId; exportId = null;
+            if (result != RESULT_OK || data == null || id == null) return;
+            try (OutputStream output = getContentResolver().openOutputStream(data.getData()); ZipOutputStream zip = new ZipOutputStream(output)) {
+                File dir = new File(modules, id);
+                if (!dir.isDirectory()) throw new IOException("Plugin not found");
+                exportFiles(dir, dir, zip);
+            } catch (Exception e) { message("export plugin failed"); return; }
+            message("export plugin succeed");
+            return;
+        }
+        if (request != PICK || result != RESULT_OK || data == null) return;
+        int[] comparison = {0}; try (InputStream input = getContentResolver().openInputStream(data.getData())) { install(input, comparison, null); message("import plugin succeed"); } catch (Exception e) { message(comparison[0] < 0 ? "import plugin failed! please update the plugin" : comparison[0] > 0 ? "import plugin failed! please update the software" : "import plugin failed! please check plugin again"); } home();
+    }
+    private void exportFiles(File root, File dir, ZipOutputStream zip) throws IOException {
+        File[] files = dir.listFiles(); if (files == null) throw new IOException("Cannot read plugin files");
+        for (File file : files) {
+            if (file.isDirectory()) { exportFiles(root, file, zip); continue; }
+            String path = root.toURI().relativize(file.toURI()).getPath();
+            zip.putNextEntry(new ZipEntry(path));
+            try (InputStream input = new FileInputStream(file)) { byte[] buffer = new byte[8192]; int n; while ((n = input.read(buffer)) != -1) zip.write(buffer, 0, n); }
+            zip.closeEntry();
+        }
+    }
+    private void install(InputStream input, int[] comparison, String expectedId) throws Exception {
         File stage = new File(getCacheDir(), "function-import"); delete(stage); if (!stage.mkdirs()) throw new IOException("Cannot create temporary directory");
         try {
-            int count = 0; long total = 0; try (InputStream input = getContentResolver().openInputStream(uri); ZipInputStream zip = new ZipInputStream(input)) { ZipEntry entry; byte[] b = new byte[8192];
+            int count = 0; long total = 0; try (ZipInputStream zip = new ZipInputStream(input)) { ZipEntry entry; byte[] b = new byte[8192];
                 while ((entry = zip.getNextEntry()) != null) { if (++count > 200) throw new IOException("Too many files"); File target = new File(stage, entry.getName()); if (!target.getCanonicalPath().startsWith(stage.getCanonicalPath() + File.separator)) throw new IOException("Invalid path");
                     if (entry.isDirectory()) { if (!target.mkdirs() && !target.isDirectory()) throw new IOException("Invalid directory"); continue; }
                     File parent = target.getParentFile(); if (!parent.mkdirs() && !parent.isDirectory()) throw new IOException("Invalid directory");
                     try (OutputStream out = new FileOutputStream(target)) { int n; while ((n = zip.read(b)) != -1) { total += n; if (total > 10_000_000) throw new IOException("Package too large"); out.write(b, 0, n); } }
                 }
             }
-            JSONObject m = metadata(stage); String id = m.getString("id"), name = m.getString("name"), category = m.getString("category"), entry = m.getString("entry"), version = m.getString("version");
+            JSONObject m = metadata(stage); comparison[0] = comparePluginStandard(m.opt("pluginStandardVersion")); String id = m.getString("id"), name = m.getString("name"), category = m.getString("category"), entry = m.getString("entry"), version = m.getString("version");
+            if (expectedId != null && !expectedId.equals(id)) throw new IOException("Unexpected bundled plugin ID");
             int api = m.getInt("hostApi");
             if (!id.matches("[a-z0-9][a-z0-9-]{0,63}") || name.trim().isEmpty() || version.trim().isEmpty() || !(category.equals("tool") || category.equals("game")) || api < 1 || api > 2) throw new IOException("Invalid or incompatible metadata");
             File page = new File(stage, entry); if (!page.getCanonicalPath().startsWith(stage.getCanonicalPath() + File.separator) || !page.isFile() || !entry.endsWith(".html")) throw new IOException("Invalid entry point");

@@ -1,0 +1,13 @@
+{
+  "id": "flappy-bird",
+  "name": "Flappy Bird",
+  "category": "game",
+  "version": "1.0",
+  "entry": "index.html",
+  "hostApi": 1,
+  "pluginStandardVersion": "1.0",
+  "description": "Guide a bird through obstacles and improve your score.",
+  "official": true,
+  "developer": "Official",
+  "icon": "icon.png"
+}

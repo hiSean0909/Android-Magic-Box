@@ -1,0 +1,13 @@
+{
+  "id": "minesweeper",
+  "name": "Minesweeper",
+  "category": "game",
+  "version": "1.0",
+  "entry": "index.html",
+  "hostApi": 1,
+  "pluginStandardVersion": "1.0",
+  "description": "Reveal safe cells and flag mines on a 9 by 9 board.",
+  "official": true,
+  "developer": "Official",
+  "icon": "icon.png"
+}
