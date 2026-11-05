@@ -16,7 +16,7 @@ The current release includes the features described below.
 2. Find plugins under **Plugins** or by name in **Search**, then tap an enabled plugin to open it.
 3. Use the settings button on a plugin card to enable, disable, or uninstall it.
 
-Newly installed and reinstalled plugins are enabled by default. Import a plugin with the same ID to update it; its enabled state is preserved.
+Newly installed and reinstalled plugins are enabled by default. When importing a plugin with an installed ID, matching versions are left unchanged. For different versions, review both versions and confirm replacement or cancel. Replacement preserves the enabled state and can install an older version; older versions may not be compatible with saved data.
 
 ## Get Plugins
 

@@ -37,6 +37,8 @@ Build an offline Android host application that lets users import and manage inde
 - In the Plugins > Import > Import plugin from market URL dialog, place lowercase copy and close buttons in that order at the bottom right; copy places the plugin repository address on the clipboard and confirms the action, and close dismisses the dialog
 - Let users browse accessible phone storage directories through the Android file picker, select a function ZIP package, and import it into application storage
 - Validate package metadata, entry point, and host interface compatibility before installation; leave installed functions unchanged if installation fails
+- For a local import with an installed plugin's ID, compare the declared plugin version strings for equality; if they match, show a dialog and leave the installed plugin unchanged
+- If the plugin version strings differ, show the installed and incoming versions in a dialog and let the user confirm replacement or cancel; leave the installed plugin unchanged on cancel
 - Record the plugin standard version supported by the APK, initially 1.0; before a local import, compare it with the plugin declaration numerically by major and minor version
 - Attempt installation regardless of the standard version comparison; retain existing package and host interface checks
 - On successful import, show `import plugin succeed`
@@ -68,7 +70,35 @@ Build an offline Android host application that lets users import and manage inde
 - Create the ZIP from the currently installed plugin files, placing the manifest, entry point, and resources at their existing package paths; exclude runtime settings and game data
 - Allow an exported ZIP to be imported through Import plugin from local; report export success or failure and preserve the installed plugin
 
-### Placeholder
+### Dialog Standards
+
+#### Copy and Close
+
+- Show lowercase `copy` and `close` buttons in that order at the bottom right
+- Copy the content specified by the dialog and confirm the action; close dismisses the dialog
+
+#### Close
+
+- Show a lowercase `close` button at the bottom right to dismiss the dialog
+
+#### Confirm and Cancel
+
+- Show a lowercase `confirm` button at the bottom left and a lowercase `cancel` button at the bottom right
+- Confirm performs the action described in the dialog; cancel dismisses the dialog without performing it
+
+#### Dialog Scenarios
+
+| Scenario | Standard |
+| --- | --- |
+| Settings > About | Copy and Close |
+| Plugins > Import > Import plugin from market | Copy and Close |
+| Plugin card > About | Close |
+| Local import with the same plugin ID and version | Close |
+| Local import with the same plugin ID and a different version | Confirm and Cancel |
+| Plugin card > Uninstall | Confirm and Cancel |
+
+- The import menu and plugin settings menu are selection dialogs and do not use these button layouts
+- Android system file picker and save dialogs are controlled by the system and do not use these button layouts
 
 # Plugin Development Specifications
 

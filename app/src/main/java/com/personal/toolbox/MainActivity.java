@@ -148,10 +148,27 @@ public class MainActivity extends Activity {
         };
         new AlertDialog.Builder(this).setTitle(m.optString("name")).setAdapter(adapter, (dialog, which) -> {
             if (which == 0 || which == 1) { getPreferences(MODE_PRIVATE).edit().putBoolean(id, which == 0).apply(); home(); }
-            else if (which == 4) new AlertDialog.Builder(this).setTitle(m.optString("name")).setMessage(m.optString("description", "No description") + "\n\nVersion: " + m.optString("version")).setPositiveButton("Close", null).show();
+            else if (which == 4) showCloseDialog(m.optString("name"), m.optString("description", "No description") + "\n\nVersion: " + m.optString("version"));
             else if (which == 3) { exportId = id; Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT); intent.addCategory(Intent.CATEGORY_OPENABLE); intent.setType("application/zip"); intent.putExtra(Intent.EXTRA_TITLE, id + ".zip"); startActivityForResult(intent, EXPORT); }
-            else new AlertDialog.Builder(this).setMessage("Uninstall " + m.optString("name") + "?").setNegativeButton("Cancel", null).setPositiveButton("Uninstall", (a,b) -> { delete(dir); home(); }).show();
+            else showConfirmDialog("Uninstall " + m.optString("name") + "?", () -> { delete(dir); home(); }, null);
         }).show();
+    }
+    private void showCloseDialog(String title, String text) {
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle(title).setMessage(text).setPositiveButton("close", null).create();
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setAllCaps(false));
+        dialog.show();
+    }
+    private void showConfirmDialog(String text, Runnable confirm, Runnable dismissed) {
+        AlertDialog dialog = new AlertDialog.Builder(this).setMessage(text).setNeutralButton("confirm", (d, w) -> confirm.run()).setPositiveButton("cancel", null).create();
+        dialog.setOnShowListener(d -> {
+            Button left = dialog.getButton(AlertDialog.BUTTON_NEUTRAL), right = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+            left.setAllCaps(false); right.setAllCaps(false);
+            LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) left.getLayoutParams();
+            params.weight = 1; params.gravity = Gravity.LEFT; left.setLayoutParams(params);
+            left.setGravity(Gravity.LEFT | Gravity.CENTER_VERTICAL);
+        });
+        if (dismissed != null) dialog.setOnDismissListener(d -> dismissed.run());
+        dialog.show();
     }
     private void about() {
         String url = "https://github.com/hiSean0909/Android-Magic-Box";
@@ -204,7 +221,7 @@ public class MainActivity extends Activity {
             return;
         }
         if (request != PICK || result != RESULT_OK || data == null) return;
-        int[] comparison = {0}; try (InputStream input = getContentResolver().openInputStream(data.getData())) { install(input, comparison, null); message("import plugin succeed"); } catch (Exception e) { message(comparison[0] < 0 ? "import plugin failed! please update the plugin" : comparison[0] > 0 ? "import plugin failed! please update the software" : "import plugin failed! please check plugin again"); } home();
+        int[] comparison = {0}; try (InputStream input = getContentResolver().openInputStream(data.getData())) { install(input, comparison, null); } catch (Exception e) { message(comparison[0] < 0 ? "import plugin failed! please update the plugin" : comparison[0] > 0 ? "import plugin failed! please update the software" : "import plugin failed! please check plugin again"); } home();
     }
     private void exportFiles(File root, File dir, ZipOutputStream zip) throws IOException {
         File[] files = dir.listFiles(); if (files == null) throw new IOException("Cannot read plugin files");
@@ -218,6 +235,7 @@ public class MainActivity extends Activity {
     }
     private void install(InputStream input, int[] comparison, String expectedId) throws Exception {
         File stage = new File(getCacheDir(), "function-import"); delete(stage); if (!stage.mkdirs()) throw new IOException("Cannot create temporary directory");
+        boolean[] pending = {false};
         try {
             int count = 0; long total = 0; try (ZipInputStream zip = new ZipInputStream(input)) { ZipEntry entry; byte[] b = new byte[8192];
                 while ((entry = zip.getNextEntry()) != null) { if (++count > 200) throw new IOException("Too many files"); File target = new File(stage, entry.getName()); if (!target.getCanonicalPath().startsWith(stage.getCanonicalPath() + File.separator)) throw new IOException("Invalid path");
@@ -231,10 +249,30 @@ public class MainActivity extends Activity {
             int api = m.getInt("hostApi");
             if (!id.matches("[a-z0-9][a-z0-9-]{0,63}") || name.trim().isEmpty() || version.trim().isEmpty() || !(category.equals("tool") || category.equals("game")) || api < 1 || api > 2) throw new IOException("Invalid or incompatible metadata");
             File page = new File(stage, entry); if (!page.getCanonicalPath().startsWith(stage.getCanonicalPath() + File.separator) || !page.isFile() || !entry.endsWith(".html")) throw new IOException("Invalid entry point");
-            File dest = new File(modules, id), backup = new File(getCacheDir(), "function-backup"); delete(backup); boolean had = dest.exists(); if (had && !dest.renameTo(backup)) throw new IOException("Cannot prepare update");
-            if (!stage.renameTo(dest)) { if (had) backup.renameTo(dest); throw new IOException("Cannot install function"); } delete(backup); if (!had) getPreferences(MODE_PRIVATE).edit().putBoolean(id, true).apply();
-        } finally { delete(stage); }
+            File dest = new File(modules, id);
+            if (expectedId == null && dest.exists()) {
+                String installedVersion = metadata(dest).getString("version");
+                if (installedVersion.equals(version)) {
+                    showCloseDialog("Plugin already installed", "Installed version: " + installedVersion + "\nIncoming version: " + version + "\nThe plugin is unchanged.");
+                } else {
+                    pending[0] = true;
+                    showConfirmDialog("Installed version: " + installedVersion + "\nIncoming version: " + version + "\nReplace the installed plugin?", () -> {
+                        try { finishInstall(stage, dest, id); message("import plugin succeed"); }
+                        catch (Exception e) { importFailure(comparison[0]); }
+                        home();
+                    }, () -> delete(stage));
+                }
+                return;
+            }
+            finishInstall(stage, dest, id);
+            if (expectedId == null) message("import plugin succeed");
+        } finally { if (!pending[0]) delete(stage); }
     }
+    private void finishInstall(File stage, File dest, String id) throws IOException {
+        File backup = new File(getCacheDir(), "function-backup"); delete(backup); boolean had = dest.exists(); if (had && !dest.renameTo(backup)) throw new IOException("Cannot prepare update");
+        if (!stage.renameTo(dest)) { if (had) backup.renameTo(dest); throw new IOException("Cannot install function"); } delete(backup); if (!had) getPreferences(MODE_PRIVATE).edit().putBoolean(id, true).apply();
+    }
+    private void importFailure(int comparison) { message(comparison < 0 ? "import plugin failed! please update the plugin" : comparison > 0 ? "import plugin failed! please update the software" : "import plugin failed! please check plugin again"); }
     private void open(File dir, JSONObject m) {
         String id = m.optString("id"), origin = "https://" + id + ".magicbox.local/"; web = new WebView(this); web.getSettings().setJavaScriptEnabled(true); web.getSettings().setDomStorageEnabled(true); web.getSettings().setAllowFileAccess(false); web.getSettings().setAllowContentAccess(false);
         web.addJavascriptInterface(new Object() { @JavascriptInterface public float screenDpi() { return getResources().getDisplayMetrics().ydpi; } @JavascriptInterface public float density() { return getResources().getDisplayMetrics().density; } @JavascriptInterface public void fullscreen(boolean value) { runOnUiThread(() -> setFullscreen(value)); } }, "MagicBox");

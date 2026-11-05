@@ -18,3 +18,8 @@
 - Add plugin export, About details, updated card controls, descriptions, and icons.
 - Search plugin names and descriptions, listing enabled plugins first and prioritizing name matches.
 - Add a custom application launcher icon.
+
+## v0.5
+
+- Leave installed plugins unchanged when imported versions match; confirm replacement when versions differ.
+- Standardize dialog buttons and their placement.

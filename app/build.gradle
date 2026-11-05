@@ -8,8 +8,8 @@ android {
         applicationId 'com.personal.toolbox'
         minSdk 29
         targetSdk 36
-        versionCode 26
-        versionName '0.4.0013'
+        versionCode 27
+        versionName '0.5.0001'
     }
     sourceSets { main { assets.srcDir layout.buildDirectory.dir('generated/bundledPluginAssets'); res.srcDir layout.buildDirectory.dir('generated/launcherIconRes') } }
     signingConfigs { debug { storeFile signingKeystore } }
